@@ -377,10 +377,28 @@ def export_tflite(keras_model, im, file, int8, data, nms, agnostic_nms, prefix=c
     batch_size, ch, *imgsz = list(im.shape)  # BCHW
     f = str(file).replace('.pt', '-fp16.tflite')
 
+    #converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
+    #converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
+    #converter.target_spec.supported_types = [tf.float16]
+    #converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    #fp16
+    if True:
+        f = str(file).replace('.pt', '-fp16.tflite')
+        converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
+        converter.target_spec.supported_types = [tf.float16]  # float16
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        tflite_model = converter.convert()
+        open(f, "wb").write(tflite_model)
+
+    # fp32
     converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-    converter.target_spec.supported_types = [tf.float16]
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.allow_custom_ops = False
+    converter.experimental_new_converter = True
+    tflite_model = converter.convert()
+    f = opt.weights.replace('.pt', '-fp32.tflite')  # filename
+    open(f, "wb").write(tflite_model)
     if int8:
         from models.tf import representative_dataset_gen
         dataset = LoadImages(check_dataset(check_yaml(data))['train'], img_size=imgsz, auto=False)
